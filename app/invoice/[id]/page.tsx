@@ -203,6 +203,7 @@ const Invoice = () => {
             </p>
           </div>
         )}
+
         <div className="flex flex-col w-full max-w-3xl mx-auto">
           <div className="flex items-center bg-red-600 text-white font-bold">
             <p className="p-1 flex items-center justify-center border border-x-gray-500 w-[40px]">

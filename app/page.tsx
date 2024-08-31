@@ -139,7 +139,7 @@ export default function Home() {
       bill_to: '',
       po_number: '',
       invoice_no: 2000,
-      contract_details: 'PROFESSIONAL SERVICES CONTRACT SCM-2022-CW1910659',
+      contract_details: 'SCM-2022-CW1910659',
       note: '',
       invoice_date: new Date(),
       exchange_rate: 0,

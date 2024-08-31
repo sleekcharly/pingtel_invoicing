@@ -111,6 +111,7 @@ export default function Home() {
           total,
           vatTax,
           vatTaxValue,
+          exchange_rate,
         } = data;
 
         // populate state data
@@ -123,6 +124,7 @@ export default function Home() {
         setCurrency(currency);
         setSignatureURL(signatureURL);
         setInvoiceDescription(invoiceDescription);
+        setExchangeRate(exchange_rate);
 
         // populate form state
         form.setValue('bill_to', bill_to);
@@ -132,6 +134,7 @@ export default function Home() {
         form.setValue('contract_details', contract_details);
         form.setValue('note', note);
         form.setValue('invoice_date', new Date(invoice_date));
+        form.setValue('exchange_rate', exchange_rate);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -298,16 +301,27 @@ export default function Home() {
   };
 
   //   handle signature image upload
-  const handleSignatureUpload = async (event: { target: { files: any[] } }) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const handleSignatureUpload = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
 
-    const storageRef = ref(storage, `images/signatures/${file.name}`);
-    await uploadBytes(storageRef, file);
+    // Check if files is not null and has at least one file
+    if (files && files.length > 0) {
+      const file = files[0]; // Assuming you only want the first file
 
-    const downloadURL = await getDownloadURL(storageRef);
+      // Perform any operations you need with the file
+      if (!file) return;
 
-    setSignatureURL(downloadURL);
+      const storageRef = ref(storage, `images/signatures/${file.name}`);
+      await uploadBytes(storageRef, file);
+
+      const downloadURL = await getDownloadURL(storageRef);
+
+      setSignatureURL(downloadURL);
+    } else {
+      console.log('No file selected');
+    }
   };
 
   //   css override for react spinner

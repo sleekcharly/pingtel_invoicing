@@ -255,16 +255,27 @@ export default function Home() {
   };
 
   //   handle signature image upload
-  const handleSignatureUpload = async (event: { target: { files: any[] } }) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const handleSignatureUpload = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
 
-    const storageRef = ref(storage, `images/signatures/${file.name}`);
-    await uploadBytes(storageRef, file);
+    // Check if files is not null and has at least one file
+    if (files && files.length > 0) {
+      const file = files[0]; // Assuming you only want the first file
 
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log(downloadURL);
-    setSignatureURL(downloadURL);
+      // Perform any operations you need with the file
+      if (!file) return;
+
+      const storageRef = ref(storage, `images/signatures/${file.name}`);
+      await uploadBytes(storageRef, file);
+
+      const downloadURL = await getDownloadURL(storageRef);
+
+      setSignatureURL(downloadURL);
+    } else {
+      console.log('No file selected');
+    }
   };
 
   //   css override for react spinner

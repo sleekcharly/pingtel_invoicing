@@ -52,7 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 export default function Home() {
   // form state
@@ -69,10 +69,79 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [color, setColor] = useState('#ffffff');
   const [currency, setCurrency] = useState('NGN');
-  const [lastInvoiceNo, setLastInvoiceNo] = useState(0);
   const [invoiceNo, setInvoiceNo] = useState(1000);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(false);
   const [exchange_rate, setExchangeRate] = useState(0);
+
+  const params = useParams<{ id: string }>();
+  const invoiceId = params.id;
+
+  useEffect(() => {
+    if (!invoiceId) return; // Return early if no ID is found
+
+    console.log(`Fetching invoice with ID: ${invoiceId}`);
+
+    // Fetch invoice data from the server or local storage
+    // make API call to firebase backend route
+    const fetchInvoiceData = async () => {
+      try {
+        const response = await fetch(`/api/firebase/create?id=${invoiceId}`);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch invoice data');
+        }
+
+        const data = await response.json();
+
+        // extractData
+        const {
+          bill_to,
+          contract_details,
+          currency,
+          invoiceDescription,
+          invoice_date,
+          invoice_no,
+          note,
+          po_number,
+          signatureURL,
+          subtotal,
+          taxDescription,
+          taxPercent,
+          title,
+          total,
+          vatTax,
+          vatTaxValue,
+        } = data;
+
+        // populate state data
+        setSubtotal(subtotal);
+        setTotal(total);
+        setVatTax(vatTax);
+        setVatTaxValue(vatTaxValue);
+        setTaxDescription(taxDescription);
+        setTaxPercent(taxPercent);
+        setCurrency(currency);
+        setSignatureURL(signatureURL);
+        setInvoiceDescription(invoiceDescription);
+
+        // populate form state
+        form.setValue('bill_to', bill_to);
+        form.setValue('title', title);
+        form.setValue('po_number', po_number);
+        form.setValue('invoice_no', invoice_no);
+        form.setValue('contract_details', contract_details);
+        form.setValue('note', note);
+        form.setValue('invoice_date', new Date(invoice_date));
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoiceData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceId]);
 
   // initialize router
   const router = useRouter();
@@ -105,32 +174,6 @@ export default function Home() {
     }
   }, [subtotal, taxPercent, vatTax, vatTaxValue, invoiceDescription]);
 
-  //   get last invoice number used
-  useEffect(() => {
-    // make API call to firebase backend route
-    const fetchLastInvoiceNo = async () => {
-      try {
-        const response = await fetch(`/api/firebase/get_last_invoice_no`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch invoice data');
-        }
-
-        const data = await response.json();
-
-        data?.lastInvoiceNumber && setLastInvoiceNo(data?.lastInvoiceNumber);
-
-        form.setValue('invoice_no', data?.lastInvoiceNumber + 1);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLastInvoiceNo();
-  }, []);
-
   //Define the form
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -138,7 +181,7 @@ export default function Home() {
       title: '',
       bill_to: '',
       po_number: '',
-      invoice_no: 2000,
+      invoice_no: 1000,
       contract_details: 'PROFESSIONAL SERVICES CONTRACT SCM-2022-CW1910659',
       note: '',
       invoice_date: new Date(),
@@ -263,7 +306,7 @@ export default function Home() {
     await uploadBytes(storageRef, file);
 
     const downloadURL = await getDownloadURL(storageRef);
-    console.log(downloadURL);
+
     setSignatureURL(downloadURL);
   };
 
@@ -279,8 +322,11 @@ export default function Home() {
     setCurrency(value);
   };
 
+  console.log(form.getValues());
+
   //   Submit handler for form
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    console.log('I am here');
     // set loading state
     setLoading(true);
 
@@ -319,13 +365,18 @@ export default function Home() {
 
     // make API call to firebase backend route
     try {
-      const res = await fetch('/api/firebase/create', {
-        method: 'POST',
+      const res = await fetch(`/api/firebase/update?id=${invoiceId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
       });
+
+      // Check for response status and parse JSON response
+      if (!res.ok) {
+        throw new Error('Failed to update invoice data');
+      }
 
       // Parse the JSON response
       const data = await res.json();
@@ -333,7 +384,6 @@ export default function Home() {
       setLoading(false);
 
       console.log('data received', data);
-      const invoiceId = data.id;
 
       // Push to display page
       router.push(`/invoice/${invoiceId}`);
@@ -349,7 +399,7 @@ export default function Home() {
       {/* form */}
       <div className="p-5 max-w-5xl mx-auto mt-10 ">
         <h2 className="ml-3 p-3 bg-red-100 w-full max-w-[200px] uppercase font-semibold leading-3 tracking-wider rounded-t-md">
-          Create Invoice
+          Update Invoice
         </h2>
         <Form {...form}>
           <form
@@ -389,8 +439,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Contract details */}
-
             {/* optional contract details */}
             <FormField
               control={form.control}
@@ -398,7 +446,7 @@ export default function Home() {
               render={({ field }) => (
                 <FormItem className="flex items-center space-x-2 w-full">
                   <FormLabel className="uppercase font-semibold">
-                    Contract Number:
+                    Contract Details:
                   </FormLabel>
                   <FormControl>
                     <Textarea
@@ -603,9 +651,8 @@ export default function Home() {
                         <div className="flex items-center space-x-2">
                           <FormControl>
                             <Input
-                              placeholder="0.0"
+                              placeholder="0.0 (optional)"
                               {...field}
-                              className="w-[90px]"
                               onChange={(e) => {
                                 setExchangeRate(Number(e.target.value));
                                 form.setValue(
@@ -613,6 +660,7 @@ export default function Home() {
                                   Number(e.target.value),
                                 );
                               }}
+                              className="w-[90px]"
                             />
                           </FormControl>
                           <p>/ $</p>
@@ -911,7 +959,7 @@ export default function Home() {
                 className="w-full max-w-md bg-red-400 text-2xl font-bold  tracking-wider mx-auto"
                 disabled={!signatureURL}
               >
-                Create Invoice{' '}
+                Update Invoice{' '}
                 <span className="ml-2">
                   <RingLoader
                     color={color}
